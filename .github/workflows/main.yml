@@ -9,6 +9,11 @@ on:
 permissions:
   contents: write
 
+# Mencegah dua workflow saling menabrak saat commit & push bersamaan
+concurrency:
+  group: repo-update-lock
+  cancel-in-progress: false
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -36,4 +41,10 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add database.sqlite index.html page2.html sitemap.xml robots.txt 2>/dev/null || true
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto update news, HTML, and sitemap" && git push)
+          if ! git diff --staged --quiet; then
+            git commit -m "Auto update news, HTML, and sitemap"
+            git pull --rebase --autostash origin main
+            git push origin main
+          else
+            echo "Tidak ada file baru atau perubahan untuk di-push."
+          fi
